@@ -303,7 +303,7 @@ function moveAgents(dt) {
 function movePassengers(dt) {
   for (const p of passengers) {
     if (p.wait > 0) { p.wait -= dt; continue; }
-    if (p.state === 'needsHelp' || p.state === 'arrived' || p.state === 'assisted') continue;
+    if (p.state === 'waiting' || p.state === 'needsHelp' || p.state === 'arrived' || p.state === 'assisted') continue;
     const d = Math.hypot(p.target.x - p.x, p.target.y - p.y);
     if (d > 4) {
       const v = p.speed || 27; p.x += (p.target.x - p.x) / d * Math.min(d, v * dt);
