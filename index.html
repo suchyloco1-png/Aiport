@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#07141d">
+<title>Airport Ground Crew Tycoon</title><link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<main id="game">
+  <canvas id="world" aria-label="Plataforma aeroportuaria interactiva"></canvas>
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark">✈</span><div><b>RAMP CONTROL</b><small>GROUND CREW TYCOON</small></div></div>
+    <div class="flight"><span class="live-dot"></span><div><b id="flightNo">IB 4821</b><small id="route">MADRID → BARCELONA</small></div><i id="aircraft">A320</i></div>
+    <div class="clock"><small>ESCALA</small><b id="timer">00:00</b></div>
+    <button class="icon-btn" id="soundBtn" title="Sonido">♫</button><button class="icon-btn" id="pauseBtn" title="Pausa">Ⅱ</button>
+  </div>
+  <section class="task-panel"><div class="task-head"><span class="eyebrow">OPERACIÓN EN CURSO</span><span class="phase-pill" id="phaseTag">LLEGADA</span></div><h1 id="taskTitle">Recibe la aeronave</h1><p id="taskDetail">Guía el avión hasta la posición y asegura el tren de aterrizaje.</p><div class="progress-track"><span id="progress"></span></div><div class="task-foot"><span id="taskCount">0 / 5 tareas</span><span class="hint">SIGUIENTE <b id="nextHint">Calzos</b></span></div></section>
+  <section class="stats"><div><span>✦</span><small>PASAJEROS</small><b id="passengers">86</b></div><div><span>▣</span><small>EQUIPAJE</small><b id="bags">12 / 12</b></div><div><span>◉</span><small>CUADRILLA</small><b id="crew">6 activos</b></div><div><span>◈</span><small>FONDOS</small><b id="money">$2,450</b></div></section>
+  <div class="event-toast" id="toast">✦ Operación de llegada iniciada</div>
+  <div class="objective" id="objective"><span class="target">◎</span><span id="objectiveText">Acércate al tren delantero para colocar los calzos</span></div>
+  <div class="controls">
+    <div class="stick-zone" id="stickZone"><div class="stick-base"><div class="stick-knob" id="stickKnob"></div></div><span>MOVER</span></div>
+    <button class="run-btn" id="runBtn"><span>»</span><small>CORRER</small></button>
+    <button class="interact-btn" id="interactBtn"><span id="interactIcon">↗</span><b id="interactLabel">INTERACTUAR</b></button>
+  </div>
+  <div class="minimap"><div class="map-label">PLATAFORMA · PUESTO 04</div><div class="map-canvas" id="miniMap"></div><span class="map-north">N</span></div>
+  <div class="toast-stack" id="toastStack"></div>
+  <div class="pause-overlay hidden" id="pauseOverlay"><div class="modal"><div class="modal-icon">Ⅱ</div><span class="eyebrow">OPERACIONES EN PAUSA</span><h2>Descanso de rampa</h2><p>Tu equipo espera la reanudación.</p><button class="primary" id="resumeBtn">REANUDAR TURNO</button><button class="secondary" id="saveBtn">GUARDAR PROGRESO</button><div class="volume-row"><span>AMBIENTE</span><input id="volume" type="range" min="0" max="100" value="35"></div></div></div>
+  <div class="complete-overlay hidden" id="completeOverlay"><div class="modal complete-modal"><div class="medal">✦</div><span class="eyebrow">TURNO COMPLETADO</span><h2>Excelente operación</h2><p id="scoreText">Salida segura · Equipaje completo · Pasajeros atendidos</p><div class="reward"><span>RECOMPENSA</span><b id="reward">+$850</b></div><button class="primary" id="nextFlightBtn">SIGUIENTE VUELO →</button></div></div>
+  <div class="help-chip">WASD / flechas <span>·</span> E interactuar</div>
+</main><script src="js/game.js"></script>
+</body></html>
