@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#07141d">
-<title>Airport Ground Crew Tycoon</title><link rel="stylesheet" href="css/game.css">
+<title>Airport Ground Crew Tycoon</title><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%238be0bb'/><text x='16' y='23' text-anchor='middle' font-size='19' fill='%2310271f'>✈</text></svg>"><link rel="stylesheet" href="css/game.css">
 </head>
 <body>
 <main id="game">
@@ -24,7 +24,7 @@
   </div>
   <div class="minimap"><div class="map-label">PLATAFORMA · PUESTO 04</div><div class="map-canvas" id="miniMap"></div><span class="map-north">N</span></div>
   <div class="toast-stack" id="toastStack"></div>
-  <div class="pause-overlay hidden" id="pauseOverlay"><div class="modal"><div class="modal-icon">Ⅱ</div><span class="eyebrow">OPERACIONES EN PAUSA</span><h2>Descanso de rampa</h2><p>Tu equipo espera la reanudación.</p><button class="primary" id="resumeBtn">REANUDAR TURNO</button><button class="secondary" id="saveBtn">GUARDAR PROGRESO</button><div class="volume-row"><span>AMBIENTE</span><input id="volume" type="range" min="0" max="100" value="35"></div></div></div>
+  <div class="pause-overlay hidden" id="pauseOverlay"><div class="modal"><div class="modal-icon">Ⅱ</div><span class="eyebrow">OPERACIONES EN PAUSA</span><h2>Descanso de rampa</h2><p>Tu equipo espera la reanudación.</p><button class="primary" id="resumeBtn">REANUDAR TURNO</button><button class="secondary" id="saveBtn">GUARDAR PROGRESO</button><div class="volume-row"><span>SONIDO</span><input id="volume" type="range" min="0" max="100" value="35" aria-label="Volumen de sonido"></div></div></div>
   <div class="complete-overlay hidden" id="completeOverlay"><div class="modal complete-modal"><div class="medal">✦</div><span class="eyebrow">TURNO COMPLETADO</span><h2>Excelente operación</h2><p id="scoreText">Salida segura · Equipaje completo · Pasajeros atendidos</p><div class="reward"><span>RECOMPENSA</span><b id="reward">+$850</b></div><button class="primary" id="nextFlightBtn">SIGUIENTE VUELO →</button></div></div>
   <div class="help-chip">WASD / flechas <span>·</span> E interactuar</div>
 </main><script src="js/game.js"></script>

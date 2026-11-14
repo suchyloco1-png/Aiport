@@ -18,7 +18,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-let W = 0, H = 0, DPR = 1, last = 0, elapsed = 0, paused = false, running = false, sprinting = false, muted = false;
+let W = 0, H = 0, DPR = 1, last = 0, elapsed = 0, paused = false, running = false, sprinting = false, muted = false, volume = .35;
 let audio = null, toastTimer = 0, toastQueue = [];
 const keys = Object.create(null), stick = { x: 0, y: 0, pointer: null };
 let money = Number(localStorage.getItem('ramp-money')) || 2450;
@@ -51,10 +51,10 @@ function newFlight() {
   ];
   flight = flights[(operation - 1) % flights.length];
   world = {
-    phase: 0, phaseTime: 0, plane: { x: -270, y: 430, scale: 1, angle: 0 }, doors: [false, false],
+    phase: 0, phaseTime: 0, plane: { x: 1500, y: 430, scale: 1, angle: 0 }, doors: [false, false],
     unloaded: 0, loaded: 0, bagCount: rand(5, 7), paxOut: 0, paxIn: 0, assistDone: false,
     assistTriggered: false, boarding: false, pushStarted: false, pushConnectedTime: 0, finished: false, carried: null,
-    stairReady: false, beltReady: false, unloadClock: 1.8, bonusPaid: false
+    stairReady: false, beltReady: false, unloadClock: 1.8, loadClock: .8, bonusPaid: false
   };
   bags = []; inboundBags = []; passengers = [];
   chocks = [{ x: 650, y: 462, placed: false }, { x: 650, y: 486, placed: false }];
@@ -121,10 +121,19 @@ function beep(freq = 520, duration = .1) {
     audio ||= new (window.AudioContext || window.webkitAudioContext)();
     if (audio.state === 'suspended') audio.resume();
     const o = audio.createOscillator(), g = audio.createGain();
-    o.type = 'sine'; o.frequency.value = freq; g.gain.value = .045;
+    o.type = 'sine'; o.frequency.value = freq; g.gain.value = Math.max(.0001, .13 * volume);
     g.gain.exponentialRampToValueAtTime(.001, audio.currentTime + duration);
     o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + duration);
   } catch (_) { /* audio is optional */ }
+}
+function objectivePoint() {
+  if (world.phase === 0) return { x: 760, y: 430 };
+  if (world.phase === 1) return { x: 650, y: 474 };
+  if (world.phase === 3) return world.doors[0] ? null : { x: 714, y: 505 };
+  if (world.phase === 6) return { x: 714, y: 505 };
+  if (world.phase === 4) return { x: 830, y: 548 };
+  if (world.phase === 8) return { x: tug.x, y: tug.y };
+  return null;
 }
 function targetForInteraction() {
   const targets = [];
@@ -159,6 +168,7 @@ function doInteract() {
       passengers.forEach((p, i) => { p.state = 'walking'; p.target = { x: 1110 + (i % 3) * 18, y: 270 + Math.floor(i / 3) * 24 }; });
       agents[1].state = 'unload'; agents[3].state = 'unload';
       announce('Bodegas abiertas · desembarque y descarga iniciados'); beep(610, .16);
+      ui.objective.textContent = 'Descarga en curso · pasajeros y equipaje saliendo';
       break;
     case 'assist':
       world.assistDone = true;
@@ -229,8 +239,8 @@ function update(dt) {
     if ((dpx * dpx) / (205 * 205) + (dpy * dpy) / (68 * 68) > 1.12) { player.x = proposed.x; player.y = proposed.y; }
   }
   if (world.phase === 0) {
-    world.plane.x = Math.min(760, world.plane.x + 235 * dt); world.plane.y = 430;
-    if (world.plane.x >= 760) { world.plane.x = 760; if (world.phaseTime > 2.5) { setPhase(1); announce('Aeronave estacionada · coloca los calzos'); } }
+    world.plane.x = Math.max(760, world.plane.x - 235 * dt); world.plane.y = 430;
+    if (world.plane.x <= 760) { world.plane.x = 760; if (world.phaseTime > 2.5) { setPhase(1); announce('Aeronave estacionada · coloca los calzos'); } }
   }
   moveEquipment(dt); moveAgents(dt); movePassengers(dt); moveBags(dt);
   if (world.phase === 2 && world.stairReady && world.beltReady && world.phaseTime > .8) { setPhase(3); announce('Equipos estabilizados · abre las bodegas'); }
@@ -303,7 +313,7 @@ function moveAgents(dt) {
 function movePassengers(dt) {
   for (const p of passengers) {
     if (p.wait > 0) { p.wait -= dt; continue; }
-    if (p.state === 'needsHelp' || p.state === 'arrived' || p.state === 'assisted') continue;
+    if (p.state !== 'walking' && p.state !== 'boarding') continue;
     const d = Math.hypot(p.target.x - p.x, p.target.y - p.y);
     if (d > 4) {
       const v = p.speed || 27; p.x += (p.target.x - p.x) / d * Math.min(d, v * dt);
@@ -326,8 +336,15 @@ function moveBags(dt) {
     b.x = lerp(b.from.x, b.to.x, t); b.y = lerp(b.from.y, b.to.y, t) - Math.sin(t * Math.PI) * 11;
     if (t >= 1) { b.state = 'cart'; world.unloaded++; }
   }
+  if (world.phase === 5) {
+    world.loadClock = (world.loadClock ?? .8) - dt;
+    if (world.loadClock <= 0) {
+      const next = inboundBags.find(item => item.state === 'cart');
+      if (next) { next.state = 'loading'; next.t = 0; next.from = { x: next.x, y: next.y }; next.to = { x: 682 + (next.id % 4) * 9, y: 475 }; }
+      world.loadClock = .9;
+    }
+  }
   for (const b of inboundBags) {
-    if (world.phase === 5 && b.state === 'cart') { b.state = 'loading'; b.t = 0; b.from = { x: b.x, y: b.y }; b.to = { x: 682 + (b.id % 4) * 9, y: 475 }; }
     if (b.state === 'loading') {
       b.t += dt / 1.55; const t = clamp(b.t, 0, 1);
       b.x = lerp(b.from.x, b.to.x, t); b.y = lerp(b.from.y, b.to.y, t) - Math.sin(t * Math.PI) * 12;
@@ -522,7 +539,7 @@ function drawBag(b) {
   ctx.restore();
 }
 function drawWorld() {
-  const scale = clamp(Math.min(W / 1000, H / 720), .36, 1.15);
+  const scale = clamp(Math.min(W / 1000, H / 720) * (W < 700 ? 1.18 : 1), .4, 1.15);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#223638'; ctx.fillRect(0, 0, W, H);
@@ -535,18 +552,36 @@ function drawWorld() {
   for (const c of chocks) if (c.placed) {
     ctx.fillStyle = '#e7bf52'; ctx.beginPath(); ctx.moveTo(c.x - 5, c.y - 5); ctx.lineTo(c.x + 5, c.y - 5); ctx.lineTo(c.x + 4, c.y + 5); ctx.lineTo(c.x - 4, c.y + 5); ctx.closePath(); ctx.fill();
   }
-  for (const b of bags) if (b.state !== 'loaded' && b !== world.carried) drawBag(b);
+  for (const b of bags) if (b.state !== 'loaded' && b.state !== 'hold' && b !== world.carried) drawBag(b);
   for (const b of inboundBags) if (b.state !== 'loaded') drawBag(b);
   for (const p of passengers) {
-    if (p.state === 'arrived') continue;
+    if (p.state === 'arrived' || p.state === 'waiting') continue;
     if (p.state === 'needsHelp') {
       ctx.save(); ctx.globalAlpha = .35 + Math.sin(elapsed * 4) * .12; ctx.fillStyle = '#f4c86e'; ctx.beginPath(); ctx.arc(p.x, p.y - 3, 19, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     drawPerson(p.x, p.y, p.color, Math.atan2(p.target.y - p.y, p.target.x - p.x), p.walk, '');
   }
   for (const a of agents) drawPerson(a.x, a.y, a.color, a.dir || 0, a.walk || 0, 'ramp');
+  const playerRing = 14 + Math.sin(elapsed * 3) * 1.5;
+  ctx.save(); ctx.strokeStyle = 'rgba(139,224,187,.62)'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.ellipse(player.x, player.y + 7, playerRing, playerRing * .42, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
   drawPerson(player.x, player.y, '#8be0bb', player.dir, player.walk, 'player');
   if (world.carried) { drawBag({ ...world.carried, x: player.x + Math.cos(player.dir) * 10, y: player.y - 13 }); }
+  const objective = objectivePoint();
+  if (objective) {
+    const pulse = 22 + Math.sin(elapsed * 3.2) * 4;
+    const bob = Math.sin(elapsed * 2.4) * 3;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(246,199,107,.72)'; ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]); ctx.lineDashOffset = -elapsed * 18;
+    ctx.beginPath(); ctx.arc(objective.x, objective.y + 8, pulse, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(246,199,107,.92)';
+    ctx.beginPath(); ctx.moveTo(objective.x - 6, objective.y - 34 + bob); ctx.lineTo(objective.x + 6, objective.y - 34 + bob); ctx.lineTo(objective.x, objective.y - 23 + bob); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = .38; ctx.fillStyle = 'rgba(246,199,107,.3)';
+    ctx.beginPath(); ctx.ellipse(objective.x, objective.y + 12, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
   const target = targetForInteraction();
   if (target) {
     const pulse = 14 + Math.sin(elapsed * 5) * 3;
@@ -559,10 +594,13 @@ function drawWorld() {
 }
 function drawMiniMap() {
   if (!ui.miniMap) return;
+  const objective = objectivePoint();
+  const targetX = objective ? objective.x : (world.phase === 8 ? tug.x : 760);
+  const targetY = objective ? objective.y : 430;
   const dots = [
     `<i class="map-plane" style="left:${clamp((world.plane.x + 270) / 1800 * 100, 4, 96)}%;top:48%"></i>`,
     `<i class="map-player" style="left:${clamp(player.x / 1500 * 100, 4, 96)}%;top:${clamp((player.y - 330) / 600 * 100, 10, 90)}%"></i>`,
-    `<i class="map-target" style="left:${clamp((world.phase === 8 ? tug.x : world.phase === 1 ? 650 : 760) / 1500 * 100, 4, 96)}%;top:51%"></i>`
+    `<i class="map-target" style="left:${clamp(targetX / 1500 * 100, 4, 96)}%;top:${clamp((targetY - 330) / 600 * 100, 10, 90)}%"></i>`
   ];
   ui.miniMap.innerHTML = dots.join('');
 }
@@ -604,8 +642,19 @@ function wireControls() {
   $('resumeBtn').addEventListener('click', () => setPaused(false));
   $('saveBtn').addEventListener('click', saveProgress);
   $('nextFlightBtn').addEventListener('click', newFlight);
-  $('soundBtn').addEventListener('click', e => { muted = !muted; e.currentTarget.textContent = muted ? '×' : '♫'; e.currentTarget.setAttribute('aria-pressed', String(muted)); if (!muted) beep(660, .1); });
-  $('volume').addEventListener('input', e => { muted = Number(e.target.value) === 0; });
+  $('soundBtn').addEventListener('click', e => {
+    muted = !muted;
+    if (!muted && volume <= 0) { volume = .35; $('volume').value = 35; }
+    e.currentTarget.textContent = muted ? '×' : '♫';
+    e.currentTarget.setAttribute('aria-pressed', String(muted));
+    if (!muted) beep(660, .1);
+  });
+  $('volume').addEventListener('input', e => {
+    volume = Number(e.target.value) / 100;
+    muted = volume === 0;
+    $('soundBtn').textContent = muted ? '×' : '♫';
+    $('soundBtn').setAttribute('aria-pressed', String(muted));
+  });
   window.addEventListener('keydown', e => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
     keys[e.key.toLowerCase()] = true;
@@ -618,5 +667,11 @@ function wireControls() {
   window.addEventListener('resize', resize);
   document.addEventListener('visibilitychange', () => { if (document.hidden && !world.finished) setPaused(true); });
 }
+window.__ramp = {
+  get world() { return world; }, get passengers() { return passengers; }, get agents() { return agents; },
+  get bags() { return bags; }, get inboundBags() { return inboundBags; }, get player() { return player; },
+  get equipment() { return { stairs, belt, tug }; }, get chocks() { return chocks; },
+  teleport(x, y) { player.x = x; player.y = y; }, interact: doInteract, setPhase
+};
 resize(); wireControls(); newFlight(); running = true; requestAnimationFrame(frame);
 })();
